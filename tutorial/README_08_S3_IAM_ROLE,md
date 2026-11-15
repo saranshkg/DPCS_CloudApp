@@ -1,0 +1,152 @@
+# 8. S3: Bucket Access Through an EC2 IAM Role
+
+The image bucket already exists and has been tested from the local application. This section configures the deployed EC2 instance to access that bucket without storing AWS access keys on the server.
+
+S3 is not inside the VPC. The EC2 instance calls the S3 API using credentials provided automatically by its attached IAM role.
+
+## 8.1 Confirm the bucket configuration
+
+In the AWS Console, open **S3 → Buckets → dpcs-campusboard-1**.
+
+Confirm:
+- The bucket is in `ap-south-1`.
+- Block all public access is enabled.
+- Objects are not made public.
+- Default encryption is enabled.
+- The bucket name matches `S3_BUCKET` in the EC2 `.env` file.
+
+Do not create a second bucket if the existing bucket is the one intended for this application.
+
+## 8.2 Create an IAM policy for the application
+
+The application needs to upload images and generate presigned URLs for reading them. A presigned URL is time-limited access to a private object. The object itself does not expire when the URL expires.
+
+Open **IAM → Policies → Create policy → JSON** and use the following policy. It grants access only to objects in the application's `images/` prefix.
+
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "ListApplicationImagePrefix",
+          "Effect": "Allow",
+          "Action": [
+            "s3:ListBucket"
+          ],
+          "Resource": "arn:aws:s3:::dpcs-campusboard-1",
+          "Condition": {
+            "StringLike": {
+              "s3:prefix": [
+                "images/*",
+                "images/"
+              ]
+            }
+          }
+        },
+        {
+          "Sid": "ManageApplicationImages",
+          "Effect": "Allow",
+          "Action": [
+            "s3:PutObject",
+            "s3:GetObject",
+            "s3:DeleteObject"
+          ],
+          "Resource": "arn:aws:s3:::dpcs-campusboard-1/images/*"
+        }
+      ]
+    }
+
+Name the policy `CampusBoardS3ImagesPolicy`.
+
+If the application never deletes images, `s3:DeleteObject` can be removed. If it does not list objects, `s3:ListBucket` can also be removed. The application needs `s3:GetObject` to generate presigned download URLs that users can successfully retrieve.
+
+## 8.3 Create an EC2 IAM role
+
+1. Open **IAM → Roles → Create role**.
+2. Trusted entity type: **AWS service**.
+3. Use case: **EC2**.
+4. Attach `CampusBoardS3ImagesPolicy`.
+5. Role name: `campusboard-ec2-role`.
+6. Create the role.
+
+The role's trust relationship should allow the EC2 service to assume it. The Console creates this when EC2 is selected as the trusted service.
+
+## 8.4 Attach the role to the EC2 instance
+
+1. Open **EC2 → Instances**.
+2. Select `campusboard-app`.
+3. Choose **Actions → Security → Modify IAM role**.
+4. Select `campusboard-ec2-role`.
+5. Update the IAM role.
+
+The instance can now obtain temporary credentials through its instance metadata service. Do not create or paste access keys into `.env`.
+
+## 8.5 Confirm the EC2 role is active
+
+Connect to EC2 over SSH. If AWS CLI v2 is installed on the instance, run:
+
+    aws sts get-caller-identity
+
+The returned identity should be an assumed-role identity for `campusboard-ec2-role`, not a root user or a personal IAM user's long-term access key.
+
+If the AWS CLI is not installed, the application can still use the instance role through Boto3. The CLI check is a diagnostic convenience, not an application requirement.
+
+Test access to the bucket:
+
+    aws s3 ls s3://dpcs-campusboard-1/images/
+
+If access is denied, check:
+- The role is attached to the correct EC2 instance.
+- The policy is attached to the role.
+- The bucket name and object prefix in the policy match the application.
+- There is no bucket policy or organization policy explicitly denying the request.
+
+## 8.6 Configure the application
+
+The EC2 `.env` should contain:
+
+    AWS_REGION=ap-south-1
+    S3_BUCKET=dpcs-campusboard-1
+
+Do not add `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY`. Boto3 should obtain temporary credentials from the EC2 instance role.
+
+The S3 client must use the correct region. The working application configuration uses an explicit regional endpoint and Signature Version 4, for example:
+
+    from botocore.config import Config
+
+    s3 = boto3.client(
+        "s3",
+        region_name=AWS_REGION,
+        endpoint_url=f"https://s3.{AWS_REGION}.amazonaws.com",
+        config=Config(
+            signature_version="s3v4",
+            s3={"addressing_style": "virtual"}
+        )
+    )
+
+Keep the working implementation already tested in the project. Do not create a second S3 client with different region settings.
+
+Restart the application after changing environment variables:
+
+    sudo systemctl restart campusboard
+
+## 8.7 Verify private image access
+
+From the deployed application:
+
+1. Create an idea with an image.
+2. Confirm the idea is saved.
+3. Confirm the image appears on the idea page.
+4. Open the S3 bucket in the Console and confirm the object exists under `images/`.
+5. Confirm the object is not publicly accessible by trying to open its ordinary S3 object URL in a private browser window.
+
+The application should display the image through a presigned URL. The URL expires after the configured expiry period, but the object remains in S3 until it is deleted.
+
+## 8.8 S3 checkpoint
+
+- [ ] The existing bucket is private and in `ap-south-1`.
+- [ ] `CampusBoardS3ImagesPolicy` grants only the required bucket and object permissions.
+- [ ] `campusboard-ec2-role` trusts EC2 and has the S3 policy attached.
+- [ ] The role is attached to `campusboard-app`.
+- [ ] EC2 can list the intended image prefix.
+- [ ] The application uses the instance role, not stored access keys.
+- [ ] Upload and image retrieval work from the deployed application.
