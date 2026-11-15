@@ -30,7 +30,7 @@ app.config["SECRET_KEY"] = os.getenv(
 
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg://postgres:password@localhost:5432/campusboard"
+    "mysql+pymysql://campusboard_app:CHANGE_ME@127.0.0.1:3306/campusboard"
 )
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
