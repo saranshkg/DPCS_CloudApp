@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{{ idea.title }}{% endblock %}
+
+{% block content %}
+
+<div class="idea-card">
+
+    <span class="badge bg-primary">
+        {{ idea.category.name }}
+    </span>
+
+    <h2 class="mt-3">{{ idea.title }}</h2>
+
+    <p class="muted">
+        Shared by {{ idea.author_name }}
+        · {{ idea.created_at.strftime("%d %b %Y, %I:%M %p") }}
+    </p>
+
+    <p style="white-space: pre-wrap;">{{ idea.description }}</p>
+
+    {% if image_url %}
+        <img src="{{ image_url }}"
+             class="idea-image mt-3"
+             alt="Image attached to this idea">
+    {% endif %}
+
+</div>
+
+
+<div class="idea-card">
+
+    <h4>Comments ({{ idea.comments|length }})</h4>
+
+    {% for comment in idea.comments %}
+
+        <div class="border-bottom py-3">
+
+            <strong>{{ comment.author_name }}</strong>
+
+            <span class="muted">
+                · {{ comment.created_at.strftime("%d %b %Y, %I:%M %p") }}
+            </span>
+
+            <p class="mb-0 mt-2">{{ comment.body }}</p>
+
+        </div>
+
+    {% else %}
+
+        <p class="muted mt-3">No comments yet. Start the conversation.</p>
+
+    {% endfor %}
+
+</div>
+
+
+<div class="idea-card">
+
+    <h4>Add a comment</h4>
+
+    <form method="POST"
+          action="{{ url_for('add_comment', idea_id=idea.id) }}">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="mb-3">
+            <label class="form-label">Your name</label>
+
+            <input type="text"
+                   name="author_name"
+                   class="form-control"
+                   maxlength="60"
+                   required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Comment</label>
+
+            <textarea name="body"
+                      class="form-control"
+                      rows="3"
+                      maxlength="1000"
+                      required></textarea>
+        </div>
+
+        <button class="btn btn-primary" type="submit">
+            Submit comment
+        </button>
+
+    </form>
+
+</div>
+
+<a href="/" class="btn btn-outline-secondary mb-4">
+    ← Back to all ideas
+</a>
+
+{% endblock %}

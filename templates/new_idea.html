@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Share an Idea{% endblock %}
+
+{% block content %}
+
+<div class="idea-card">
+
+    <h3>Share an idea</h3>
+    <p class="muted">What would you like to share with the community?</p>
+
+    <form method="POST"
+          enctype="multipart/form-data">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="mb-3">
+            <label class="form-label">Your name</label>
+            <input type="text"
+                   name="author_name"
+                   class="form-control"
+                   maxlength="60"
+                   required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input type="text"
+                   name="title"
+                   class="form-control"
+                   maxlength="120"
+                   required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description"
+                      class="form-control"
+                      rows="5"
+                      maxlength="3000"
+                      required></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Category</label>
+
+            <select name="category_id" class="form-select" required>
+                <option value="">Select category</option>
+
+                {% for category in categories %}
+                    <option value="{{ category.id }}">
+                        {{ category.name }}
+                    </option>
+                {% endfor %}
+
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Attach an image (optional)</label>
+
+            <input type="file"
+                   name="image"
+                   class="form-control"
+                   accept="image/jpeg,image/png,image/webp">
+
+            <div class="form-text">
+                JPEG, PNG or WEBP. Maximum size: 5 MB.
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Publish idea
+        </button>
+
+        <a href="/" class="btn btn-outline-secondary">
+            Cancel
+        </a>
+
+    </form>
+
+</div>
+
+{% endblock %}
