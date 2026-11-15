@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 from flask import (
     Flask, render_template, request, redirect,
@@ -46,7 +47,17 @@ csrf = CSRFProtect(app)
 AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
 S3_BUCKET = os.getenv("S3_BUCKET")
 
-s3 = boto3.client("s3", region_name=AWS_REGION)
+# s3 = boto3.client("s3", region_name=AWS_REGION)
+
+s3 = boto3.client(
+    "s3",
+    region_name=AWS_REGION,
+    endpoint_url=f"https://s3.{AWS_REGION}.amazonaws.com",
+    config=Config(
+        signature_version="s3v4",
+        s3={"addressing_style": "virtual"}
+    )
+)
 
 ALLOWED_FORMATS = {
     "JPEG": ("jpg", "image/jpeg"),
