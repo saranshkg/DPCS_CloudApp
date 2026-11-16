@@ -66,28 +66,49 @@ An IGW does not automatically make every subnet public. The subnet's route table
 
 A route table determines where network traffic from a subnet is sent.
 
-Create or configure a public route table:
+**Create the public route table:**
+
+1. Go to **VPC → Route tables → Create route table**.
+2. Name: `campusboard-public-rt`.
+3. Select VPC: `campusboard-vpc`.
+4. Click **Create route table**.
+5. Select the new route table and open **Routes → Edit routes → Add route**.
+6. Add the following routes:
 
 | Destination | Target |
 |---|---|
 | `10.0.0.0/16` | `local` |
 | `0.0.0.0/0` | `campusboard-igw` |
 
-Associate `campusboard-public-a` with this route table.
+7. Save changes.
+8. Open **Subnet associations → Edit subnet associations**.
+9. Select `campusboard-public-a` (`10.0.1.0/24`).
+10. Save associations.
 
-For the private subnets, use a route table with only the local VPC route:
+**Create the private route table:**
+
+1. Go to **VPC → Route tables → Create route table**.
+2. Name: `campusboard-private-rt`.
+3. Select VPC: `campusboard-vpc`.
+4. Click **Create route table**.
+5. Select the new route table and open **Routes**.
+6. Verify that it contains only the local VPC route:
 
 | Destination | Target |
 |---|---|
 | `10.0.0.0/16` | `local` |
 
-Associate both private subnets with this private route table.
+7. Open **Subnet associations → Edit subnet associations**.
+8. Select both `campusboard-private-a` (`10.0.11.0/24`) and `campusboard-private-b` (`10.0.12.0/24`).
+9. Save associations.
 
-For this workshop, the RDS database does not need to initiate connections to the public internet. Do not add an Internet Gateway route to the private route table. A NAT Gateway is not required for this architecture.
+The RDS database does not need to initiate connections to the public internet. Do not add an Internet Gateway route to the private route table. A NAT Gateway is not required for this architecture.
 
 ## 5.6 Security groups
 
 A security group is a stateful virtual firewall attached to an AWS resource. It controls inbound and outbound traffic.
+
+Route tables and security groups serve completely different functions in cloud networking (such as in AWS or Azure): route tables direct where traffic goes (like a GPS), while security groups decide who is allowed in or out (like a firewall).
 
 Create two security groups in `campusboard-vpc`.
 

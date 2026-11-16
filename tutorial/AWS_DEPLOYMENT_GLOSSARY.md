@@ -52,6 +52,55 @@ S3 is an AWS service accessed through its API. It is not inside the VPC or one o
 
 These are names chosen for this deployment, not AWS concepts.
 
+## 2. Hosting and public access
+
+**Hosting:** Running an application on a server that other people can reach over a network. In this project, Flask is hosted on an Ubuntu EC2 instance.
+
+**Server:** A computer that provides a service to other computers. The EC2 instance is the server. It runs the application processes and responds to browser requests.
+
+**Public IP address:** An internet-routable address users can connect to, subject to routing and security rules. Users open the application at `http://EC2_PUBLIC_IP`, replacing the placeholder with the address shown in the EC2 Console.
+
+A public IP alone does not make the application reachable. The subnet route, Internet Gateway, security group, Nginx and application process must all be working.
+
+**Private IP address:** An address used within a private network such as the VPC. EC2 and RDS communicate over private network addresses. RDS does not need a public IP for this application.
+
+**Automatically assigned public IP:** EC2 can automatically assign a public IPv4 address when an instance is launched in a subnet configured to assign public addresses. It is generally not permanent. When an instance is stopped and started, the automatically assigned public IP can change. A reboot normally retains it. If it changes, use the new address shown in the EC2 Console.
+
+**Elastic IP:** A static public IPv4 address allocated to an AWS account. It can be associated with an EC2 instance and retained when the instance is stopped or replaced, subject to reassociation. It is not required for this workshop. AWS may charge for public IPv4 addresses, including Elastic IPs, according to current pricing and usage conditions.
+
+**Public DNS name:** A hostname that resolves to a public IP address. EC2 can provide a public DNS name when it has public IPv4 connectivity. Like an automatically assigned public IP, it can change when the public IP changes.
+
+**Domain name:** A human-readable address such as `campusboard.example.com`. A domain is registered through a domain registrar and configured to direct users to the hosted application. It is optional for this workshop; users can access the application using the EC2 public IP.
+
+**DNS record:** A DNS instruction that maps a name to an address or another hostname. Common records include:
+- **A:** maps a hostname to an IPv4 address.
+- **AAAA:** maps a hostname to an IPv6 address.
+- **CNAME:** maps one hostname to another hostname.
+
+A simple deployment with a stable public IP can use an A record. If the EC2 public IP changes, the record may need updating. A stable production setup generally uses a stable address or a load balancer.
+
+**HTTP and HTTPS:** HTTP is the protocol browsers use to request web pages. This workshop initially serves the application over HTTP on port 80. HTTPS is HTTP protected by TLS encryption and normally uses port 443. A public production site should use HTTPS.
+
+**TLS certificate:** Helps a browser verify a website's identity and establish an encrypted HTTPS connection. A certificate must be valid for the hostname users visit. A certificate for a domain does not automatically cover an EC2 public IP.
+
+**Web server and application server:** A web server handles incoming HTTP requests and may serve static files or forward requests. An application server runs the application code. In this project, Nginx is the web server and reverse proxy, Gunicorn is the WSGI application server, and Flask contains the application logic.
+
+**Reverse proxy:** Accepts a client request and forwards it to another server. Nginx accepts public requests on port 80 and forwards them to Gunicorn on the same EC2 machine.
+
+**Binding address:** A process listens on an IP address and port. `127.0.0.1` means the local machine only; `0.0.0.0` means all network interfaces. Gunicorn should bind to `127.0.0.1:8000` in this setup. Nginx can reach it locally, but users on the internet cannot connect directly to port 8000.
+
+**Public reachability checklist:** For users to open the application through the EC2 public IP:
+1. EC2 has a current public IPv4 address or public DNS name.
+2. Its subnet route table sends internet-bound traffic to an Internet Gateway.
+3. The EC2 security group permits inbound HTTP on port 80.
+4. Nginx is running and listening on port 80.
+5. Nginx forwards requests to Gunicorn.
+6. Gunicorn is running and Flask imports successfully.
+
+SSH access is separate. Port 22 should be allowed only from the administrator's current public IP, not from the whole internet.
+
+---
+
 ## 2. AWS account, identity and permissions
 
 **AWS account:** The top-level container for AWS resources, access control and billing. EC2, RDS, S3 and IAM resources are created within an account.
@@ -78,7 +127,7 @@ These are names chosen for this deployment, not AWS concepts.
 
 **AWS CLI profile:** A named set of CLI configuration and credentials, often including a default Region. A local profile such as `campusboard-dev` is not automatically copied to EC2. On EC2, the application should use its attached IAM role.
 
-## 3. SSH, PEM files and server access
+## 4. SSH, PEM files and server access
 
 **SSH (Secure Shell):** A protocol for securely opening a remote command-line session. The administrator uses SSH to connect to the Ubuntu EC2 instance.
 
@@ -102,7 +151,7 @@ Connect to the Ubuntu instance:
 
 **Important:** The PEM file is for administrator SSH access. It is not an AWS IAM access key and is not used by Boto3 to access S3.
 
-## 4. Regions and Availability Zones
+## 5. Regions and Availability Zones
 
 **AWS Region:** A separate geographic AWS area. EC2 and RDS are created in a selected Region. This project uses `ap-south-1` (Mumbai). Keep EC2 and RDS in this Region, and configure the S3 client for the bucket's Region.
 
@@ -110,7 +159,7 @@ Connect to the Ubuntu instance:
 
 **Regional versus zonal resources:** Some resources belong to a Region; others are placed in a particular AZ. An EC2 instance runs in a subnet in one AZ. An S3 bucket is regional.
 
-## 5. VPC and networking
+## 6. VPC and networking
 
 **VPC (Virtual Private Cloud):** A logically isolated virtual network in an AWS Region. It provides the network boundary and IP address range for resources such as EC2 and RDS. `campusboard-vpc` uses `10.0.0.0/16`.
 
@@ -152,7 +201,7 @@ The RDS rule should use the EC2 security group as its source, not the EC2 public
 
 **Network interface (ENI):** A virtual network card attached to an instance. It carries the instance's private IP address and security-group associations.
 
-## 6. Compute, database and object storage
+## 7. Compute, database and object storage
 
 **EC2 (Elastic Compute Cloud):** AWS virtual servers. `campusboard-app` runs Ubuntu and hosts Flask, Gunicorn and Nginx.
 
@@ -186,7 +235,7 @@ S3 does not have real folders in the same sense as a computer filesystem. The sl
 
 **Boto3:** The AWS SDK for Python. Flask uses it to upload images and generate presigned URLs. On EC2, Boto3 can obtain credentials from the attached IAM role. Do not hard-code access keys in the application.
 
-## 7. Application runtime and configuration
+## 8. Application runtime and configuration
 
 **Flask:** Python web framework that handles application routes, forms and responses.
 
@@ -202,6 +251,7 @@ S3 does not have real folders in the same sense as a computer filesystem. The sl
 |---:|---|---|
 | 22 | SSH over TCP | Administrator connects to EC2 |
 | 80 | HTTP over TCP | Browser connects to Nginx |
+| 443 | HTTPS over TCP | Encrypted web traffic, optional extension |
 | 8000 | HTTP/WSGI listener | Nginx connects to Gunicorn on localhost |
 | 3306 | MySQL over TCP | EC2 connects to RDS |
 
@@ -219,7 +269,7 @@ Port 8000 should not be open to the public internet. Gunicorn listens on `127.0.
 
 **AWS CLI versus AWS SDK:** The CLI is commonly used by a person in a terminal. Boto3 is used by Python code. A CLI command working on a developer's laptop does not prove EC2 has the same credentials, permissions or network access.
 
-## 8. Security, reliability and cost
+## 9. Security, reliability and cost
 
 **Encryption at rest:** Protects stored data on services such as S3, RDS and EBS. S3 server-side encryption encrypts objects as AWS stores them.
 
@@ -237,7 +287,7 @@ Port 8000 should not be open to the public internet. Gunicorn listens on `127.0.
 
 **Cleanup:** Terminating EC2 does not automatically delete separate RDS databases, S3 buckets, snapshots, EBS volumes, IAM resources or other services. Review each service independently.
 
-## 9. How a request moves through the system
+## 10. How a request moves through the system
 
 ### A. A user opens the home page
 
@@ -270,7 +320,7 @@ The database stores the S3 key, not the presigned URL. The URL is temporary; the
 
 These are separate checks: the network rule permits the connection; MySQL authentication authorizes the database user.
 
-## 10. Common confusions
+## 11. Common confusions
 
 | Confusion | Correct understanding |
 |---|---|
@@ -288,7 +338,7 @@ These are separate checks: the network rule permits the connection; MySQL authen
 | Two private subnets make the application highly available. | No. They satisfy the RDS subnet-group placement requirement. One EC2 instance remains a single point of failure. |
 | A budget alert prevents overspending. | No. It sends a notification; it does not cap spending or stop resources. |
 
-## 11. Quick reference: which mechanism does what?
+## 12. Quick reference: which mechanism does what?
 
 | Need | Mechanism |
 |---|---|
@@ -300,14 +350,17 @@ These are separate checks: the network rule permits the connection; MySQL authen
 | Control AWS API permissions | IAM policies and roles |
 | Give EC2 software AWS credentials without stored permanent keys | EC2 IAM role |
 | Log in to Ubuntu as administrator | SSH and PEM private key |
-| Run the Flask application | EC2 |
+| Host the application | EC2 |
+| Give users an address to reach it | Public IP, public DNS or domain |
+| Keep a stable public IPv4 address | Elastic IP |
+| Encrypt browser traffic | HTTPS and TLS certificate |
 | Store structured ideas and comments | RDS MySQL |
 | Store uploaded image files | S3 |
 | Let a browser temporarily read a private image | Presigned URL |
 | Call AWS services from Python | Boto3 |
 | Route public web traffic to Flask | Nginx and Gunicorn |
 
-## 12. The mental model
+## 13. The mental model
 
 Think about the deployment through four separate questions:
 

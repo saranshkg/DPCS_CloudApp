@@ -86,9 +86,9 @@ On EC2, install a MySQL client:
 
 Connect using the RDS endpoint and master username:
 
-    mysql -h RDS_ENDPOINT -P 3306 -u dbadmin -p
+    mysql -h RDS_ENDPOINT -P 3306 -u RDS_USERNAME -p
 
-Replace `RDS_ENDPOINT` and `dbadmin` with your values. Enter the master password when prompted.
+Replace `RDS_ENDPOINT` and `RDS_USERNAME` with your values. Enter the master password when prompted.
 
 Create the database and a separate application user. Replace the sample password with a strong password:
 
@@ -99,6 +99,17 @@ Create the database and a separate application user. Replace the sample password
 
 The `%` host pattern is acceptable here because the RDS security group limits network access to the EC2 security group. Do not expose port 3306 publicly.
 
+
+> [!CAUTION]
+> **Emergency cleanup only**
+>
+> Run the following 2 SQL commands **only if something went wrong while executing the database and user creation commands above** and you need to undo their effects. Do not run them as part of the normal setup.
+```sql
+DROP USER IF EXISTS 'campusboard_app'@'%';
+DROP DATABASE IF EXISTS campusboard;
+```
+
+If everything went well, exit My
 Exit:
 
     EXIT;
@@ -141,6 +152,8 @@ Set:
 Replace the placeholders. URL-encode special characters in the password. Do not surround the URL with quotes unless the application's environment-file parser requires them.
 
 Keep the local database URL on your own computer. The EC2 `.env` must point to the RDS endpoint.
+
+Continue to README_06 and finish it before coming here!
 
 Restart the application after changing the environment:
 

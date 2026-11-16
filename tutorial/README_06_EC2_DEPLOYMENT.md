@@ -118,13 +118,21 @@ Restrict access to the file:
 
 The application must load `.env` during startup, as it does in the local setup. If it does not, configure the systemd service in Section 6.8 to load the file explicitly.
 
+**Note:** Before continuing further, create RDS first following instructions in README_07_RDS_MYSQL.md
+
+Next, initialize the database
+From your application directory (~/DPCS_CloudApp), run:
+
+source .venv/bin/activate
+flask --app app init-db
+
 ## 6.7 Test Gunicorn locally on the instance
 
 With the virtual environment active:
 
     gunicorn --workers 2 --bind 127.0.0.1:8000 app:app
 
-From another SSH session, test:
+From another SSH session (ssh into ec2 from another terminal in your machine while the previous gunicorn is running), test:
 
     curl -I http://127.0.0.1:8000
 
